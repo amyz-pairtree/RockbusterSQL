@@ -1,7 +1,7 @@
 # Rockbuster Stealth LLC - SQL Queries
 **Project Overview**: Analyzing **Rockbuster Stealth LLC**'s 2005-2006 movie rental data to generate actionable insights and guide the launch strategy for their new online streaming platform. 
 
-Main Recommendations: 
+## Main Recommendations: 
 1) Focus on normalized averages for customer behavior to mitigate the risk of overestimating markets influenced by outliers (important for Rockbuster in particular, with their highly dispersed and unevenly distributed customer base); this provides a more reliable foundation for predicting growth opportunities.
 2) Normalizing rentals against the inventory for each genre shows that the top 5 genres with greatest growth potential are: 1) Sci-Fi; 2) Action; 3) Animation; 4) Classics; 5) Drama. For outlier countries, however (i.e. significantly higher or lower rentals per customer), a more localized exploration of genre popularity is advisable.
 3) Rental frequency and spending show a clear decline, from New Customers to Long-Tenured Customers-- strategies such as subscription models or loyalty programs will help enure long-term revenue stability and growth.
