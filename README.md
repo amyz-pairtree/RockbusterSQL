@@ -9,8 +9,7 @@ Main Recommendations:
 
 View full storyboard here: [Rockbuster Stealth Analysis](https://public.tableau.com/app/profile/amy.zhang8641/viz/Rockbusterdataanalysis_1/Story1)
 
-## Index: 
-#### Storyboard Slide # : SQL Query for the corresponding visualization
+## Index (Storyboard Slide # : SQL Query for the corresponding visualization)
 
 Slides 1&2: Maps of Customer Distribution 
 granular_rental_table_2
