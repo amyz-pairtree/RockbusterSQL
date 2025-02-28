@@ -1,0 +1,130 @@
+--ONE: 'avg_rentals_outliers'
+--'This table records key performance and customer behavior metrics for the 19 outlier countries (those with above or below average rental frequency per customer). It includes the standard deviation and absolute value of these standard deviations for each metric.
+
+/*CTE 1: country_rentals – aggregated by country*/ 
+WITH country_rentals AS (
+         SELECT country_engagement_table.country,
+            country_engagement_table.avg_rentals_per_month_per_customer,
+            country_engagement_table.avg_spending_per_month_per_customer,
+            country_engagement_table.avg_revenue_per_rental,
+            country_engagement_table.avg_revenue_per_customer
+           FROM country_engagement_table
+          GROUP BY country_engagement_table.country, country_engagement_table.avg_rentals_per_month_per_customer, country_engagement_table.avg_spending_per_month_per_customer, country_engagement_table.avg_revenue_per_rental, country_engagement_table.avg_revenue_per_customer
+        ), 
+/*CTE 2: stats - ​​These statistics will be used in the final CTE to standardize the data.*/
+stats AS (
+         SELECT avg(country_engagement_table.avg_rentals_per_month_per_customer) AS mean_rentals,
+            stddev(country_engagement_table.avg_rentals_per_month_per_customer) AS stddev_rentals,
+            avg(country_engagement_table.avg_spending_per_month_per_customer) AS mean_spending,
+            stddev(country_engagement_table.avg_spending_per_month_per_customer) AS stddev_spending,
+            avg(country_engagement_table.avg_revenue_per_rental) AS mean_revenue_per_rental,
+            stddev(country_engagement_table.avg_revenue_per_rental) AS stddev_revenue_per_rental,
+            avg(country_engagement_table.avg_revenue_per_customer) AS mean_revenue_per_customer,
+            stddev(country_engagement_table.avg_revenue_per_customer) AS stddev_revenue_per_customer
+           FROM country_engagement_table
+        ), 
+/*CTE 3: final - This is where the actual "work" happens:
+-The country_rentals CTE is joined to the stats CTE using JOIN ON 1 = 1: cross-joins the statistics to every row in country_rentals.
+-Then, it calculates z-scores for each of the metrics by subtracting the mean from each value and dividing by the standard deviation ((value - mean) / stddev).
+-The absolute value of these z-scores is also calculated.*/
+final AS (
+         SELECT cr.country,
+            cr.avg_rentals_per_month_per_customer,
+            cr.avg_spending_per_month_per_customer,
+            cr.avg_revenue_per_rental,
+            cr.avg_revenue_per_customer,
+            (cr.avg_rentals_per_month_per_customer - s.mean_rentals) / s.stddev_rentals AS rentals_standard_deviation,
+            abs((cr.avg_rentals_per_month_per_customer - s.mean_rentals) / s.stddev_rentals) AS rentals_absolute_stddev,
+            (cr.avg_spending_per_month_per_customer - s.mean_spending) / s.stddev_spending AS spending_standard_deviation,
+            abs((cr.avg_spending_per_month_per_customer - s.mean_spending) / s.stddev_spending) AS spending_absolute_stddev,
+            (cr.avg_revenue_per_rental - s.mean_revenue_per_rental) / s.stddev_revenue_per_rental AS revenue_per_rental_standard_deviation,
+            abs((cr.avg_revenue_per_rental - s.mean_revenue_per_rental) / s.stddev_revenue_per_rental) AS revenue_per_rental_absolute_stddev,
+            (cr.avg_revenue_per_customer - s.mean_revenue_per_customer) / s.stddev_revenue_per_customer AS revenue_per_customer_standard_deviation,
+            abs((cr.avg_revenue_per_customer - s.mean_revenue_per_customer) / s.stddev_revenue_per_customer) AS revenue_per_customer_absolute_stddev
+           FROM country_rentals cr
+             JOIN stats s ON 1 = 1
+        )
+/*Last part picks the results from the final CTE and filters the countries where the absolute rental standard deviation is greater than or equal to 1.5. It also orders the countries by their rental standard deviation*/
+ SELECT final.country,
+    final.avg_rentals_per_month_per_customer,
+    final.avg_spending_per_month_per_customer,
+    final.avg_revenue_per_rental,
+    final.avg_revenue_per_customer,
+    final.rentals_standard_deviation,
+    final.rentals_absolute_stddev,
+    final.spending_standard_deviation,
+    final.spending_absolute_stddev,
+    final.revenue_per_rental_standard_deviation,
+    final.revenue_per_rental_absolute_stddev,
+    final.revenue_per_customer_standard_deviation,
+    final.revenue_per_customer_absolute_stddev
+   FROM final
+  WHERE final.rentals_absolute_stddev >= 1.5::double precision
+  ORDER BY final.rentals_standard_deviation DESC;
+
+-- TWO: (post-facto) Correction: 
+-- No need for a second CTE (stats):
+--The need for the second CTE (stats) to calculate global averages and standard deviations is eliminated, simplifying the query.
+
+WITH country_rentals AS (
+    SELECT 
+        country_engagement_table.country,
+        country_engagement_table.avg_rentals_per_month_per_customer,
+        country_engagement_table.avg_spending_per_month_per_customer,
+        country_engagement_table.avg_revenue_per_rental,
+        country_engagement_table.avg_revenue_per_customer
+    FROM country_engagement_table
+),
+standard_devs AS (
+    SELECT
+        cr.country,
+        cr.avg_rentals_per_month_per_customer,
+        cr.avg_spending_per_month_per_customer,
+        cr.avg_revenue_per_rental,
+        cr.avg_revenue_per_customer,
+        (cr.avg_rentals_per_month_per_customer - AVG(cr.avg_rentals_per_month_per_customer) OVER ()) / STDDEV(cr.avg_rentals_per_month_per_customer) OVER () AS rentals_standard_deviation,
+        ABS((cr.avg_rentals_per_month_per_customer - AVG(cr.avg_rentals_per_month_per_customer) OVER ()) / STDDEV(cr.avg_rentals_per_month_per_customer) OVER ()) AS rentals_absolute_stddev,
+        (cr.avg_spending_per_month_per_customer - AVG(cr.avg_spending_per_month_per_customer) OVER ()) / STDDEV(cr.avg_spending_per_month_per_customer) OVER () AS spending_standard_deviation,
+        ABS((cr.avg_spending_per_month_per_customer - AVG(cr.avg_spending_per_month_per_customer) OVER ()) / STDDEV(cr.avg_spending_per_month_per_customer) OVER ()) AS spending_absolute_stddev,
+        (cr.avg_revenue_per_rental - AVG(cr.avg_revenue_per_rental) OVER ()) / STDDEV(cr.avg_revenue_per_rental) OVER () AS revenue_per_rental_standard_deviation,
+        ABS((cr.avg_revenue_per_rental - AVG(cr.avg_revenue_per_rental) OVER ()) / STDDEV(cr.avg_revenue_per_rental) OVER ()) AS revenue_per_rental_absolute_stddev,
+        (cr.avg_revenue_per_customer - AVG(cr.avg_revenue_per_customer) OVER ()) / STDDEV(cr.avg_revenue_per_customer) OVER () AS revenue_per_customer_standard_deviation,
+        ABS((cr.avg_revenue_per_customer - AVG(cr.avg_revenue_per_customer) OVER ()) / STDDEV(cr.avg_revenue_per_customer) OVER ()) AS revenue_per_customer_absolute_stddev
+    FROM country_rentals cr
+)
+SELECT 
+    sd.country,
+    sd.avg_rentals_per_month_per_customer,
+    sd.avg_spending_per_month_per_customer,
+    sd.avg_revenue_per_rental,
+    sd.avg_revenue_per_customer,
+    sd.rentals_standard_deviation,
+    sd.rentals_absolute_stddev,
+    sd.spending_standard_deviation,
+    sd.spending_absolute_stddev,
+    sd.revenue_per_rental_standard_deviation,
+    sd.revenue_per_rental_absolute_stddev,
+    sd.revenue_per_customer_standard_deviation,
+    sd.revenue_per_customer_absolute_stddev
+FROM standard_devs sd
+WHERE sd.rentals_absolute_stddev >= 1.5
+ORDER BY sd.rentals_standard_deviation DESC;
+
+-- THREE: 'genre_popularity_country'
+-- This table records the performance of each movie genre in each country, including the number of rentals, distinct titles rented, and the rentals per title for each genre in each country.
+
+ SELECT g.name AS genre,
+    k.country,
+    count(DISTINCT r.rental_id) AS number_of_rentals,
+    count(DISTINCT f.film_id) AS title_count,
+    count(DISTINCT r.rental_id)::numeric * 1.0 / count(DISTINCT f.film_id)::numeric AS rentals_per_title
+   FROM rental r
+     LEFT JOIN granular_rental_table_2 k ON r.rental_id = k.rental_id
+     LEFT JOIN inventory i ON r.inventory_id = i.inventory_id
+     LEFT JOIN film f ON f.film_id = i.film_id
+     LEFT JOIN film_category q ON f.film_id = q.film_id
+     LEFT JOIN category g ON q.category_id = g.category_id
+  GROUP BY g.name, k.country
+  ORDER BY (count(DISTINCT r.rental_id)::numeric * 1.0 / count(DISTINCT f.film_id)::numeric) DESC;
+
+
