@@ -1,0 +1,11 @@
+-- 'genre_popularity_norm'
+ -- This table records the total number of rentals and total movie titles for each genre, and calculates the number of rentals per title within each genre.
+
+ SELECT g.genre,
+    sum(g.number_of_rentals) AS number_of_rentals,
+    t.number_of_titles,
+    sum(g.number_of_rentals) / t.number_of_titles::numeric AS average_rentals_per_title
+   FROM genre_popularity_country g
+     LEFT JOIN title_count_genre t ON g.genre::text = t.genre::text
+  GROUP BY g.genre, t.number_of_titles
+  ORDER BY (sum(g.number_of_rentals) / t.number_of_titles::numeric) DESC;
