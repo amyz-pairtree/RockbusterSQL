@@ -20,40 +20,20 @@ Over 25% of revenue comes from late fees—a fragile source as streaming competi
 
 ## Index (Storyboard Slide # : SQL Query for the corresponding visualization)
 
-Slides 1&2: Maps of Customer Distribution
+Slides 1&2: Maps of Customer Distribution: *granular_rental_table_2*
 
-granular_rental_table_2
-
-Slide 2: Histograms of Customer Distribution 
-
-district_histogram
-country_histogram
+Slide 2: Histograms of Customer Distribution: *district_histogram; country_histogram*
  
-Slide 3: Scatterplots of Avg. Rental Frequency & Revenue Per Rental 
+Slide 3: Scatterplots of Avg. Rental Frequency & Revenue Per Rental: *country_engagement_TABLE (composite of: 'country_analysis' & 'country_engagement_analysis' queries); stddev_absolutes*
 
-country_engagement_TABLE (composite of: 'country_analysis' & 'country_engagement_analysis' queries)
-stddev_absolutes
+Slide 5: Bar Graph - Genre Popularity (normalized by Inventory): *genre_popularity_norm*
 
-Slide 5: Bar Graph - Genre Popularity (normalized by Inventory)  
+Slide 5: Heatmap - Outlier Countries Genre Analysis: *avg_rentals_outliers; (post-facto) Correction; genre_popularity_country*
 
-genre_popularity_norm
+Slide 6: Scatterplot & Box-Whisker Graph - Tenure Length Analysis: *customer_engagement_district; (post-facto) Correction*
 
-Slide 5: Heatmap - Outlier Countries Genre Analysis 
+Slide 7: Pie Chart - Revenue Breakdown: *late_charge_noneg*
 
-avg_rentals_outliers 
-(post-facto) Correction
-genre_popularity_country
-
-Slide 6: Scatterplot & Box-Whisker Graph - Tenure Length Analysis 
-
-customer_engagement_district
-(post-facto) Correction
-
-Slide 7: Pie Chart - Revenue Breakdown
-
-late_charge_noneg
-
-Slide 7: Rental Rate Mode Graph
-country_engagement_TABLE (same as 'Slide 3: Scatterplots'; **see above**)
+Slide 7: Rental Rate Mode Graph: *country_engagement_TABLE (same as 'Slide 3: Scatterplots'; **see above**)*
 
 🔥 co-author: ChatGPT
