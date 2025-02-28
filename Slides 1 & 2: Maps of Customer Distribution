@@ -1,5 +1,5 @@
-# granular_rental_table_2
-## This table records individual rental transactions for a single physical copy of a movie at a time. It captures customer details (name, unique rental ID, city, district, and country), rental specifics (rental and return dates, amount paid, rental rate, rental period), and movie attributes (movie title, release year, rating, length, and genre). Each row represents a unique transaction involving a customer renting a specific movie.  
+--'granular_rental_table_2'
+--This table records individual rental transactions for a single physical copy of a movie at a time. It captures customer details (name, unique rental ID, city, district, and country), rental specifics (rental and return dates, amount paid, rental rate, rental period), and movie attributes (movie title, release year, rating, length, and genre). Each row represents a unique transaction involving a customer renting a specific movie.  
  
 SELECT r.rental_id,
     p.payment_id,
