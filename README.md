@@ -18,8 +18,6 @@ Over 25% of revenue comes from late fees—a fragile source as streaming competi
 
 🔗 View full storyboard here: [Rockbuster Stealth Analysis](https://public.tableau.com/app/profile/amy.zhang8641/viz/Rockbusterdataanalysis_1/Story1)
 
-👀 (This description edit brought to you by 🔥ChatGPT.)
-
 ## Index (Storyboard Slide # : SQL Query for the corresponding visualization)
 
 Slides 1&2: Maps of Customer Distribution 
@@ -51,3 +49,4 @@ late_charge_noneg
 Slide 7: Rental Rate Mode Graph
 country_engagement_TABLE (same as 'Slide 3: Scatterplots'; **see above**)
 
+🔥 vers.ChatGPT.
