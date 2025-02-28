@@ -1,0 +1,37 @@
+-- 'late_charge_noneg'
+-- This table records the number of days a transaction was overdue and calculates the corresponding late fees for each transaction (represented in the last two columns). 
+
+ SELECT r.rental_id,
+    p.payment_id,
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    b.city,
+    d.country,
+    a.district,
+    p.amount AS payment_amount,
+    f.title,
+    f.rental_duration,
+    f.rental_rate,
+    f.length,
+    f.rating,
+    r.rental_date,
+    r.return_date,
+        CASE
+            WHEN r.return_date > (r.rental_date + '1 day'::interval) THEN GREATEST(0::numeric, EXTRACT(day FROM r.return_date - r.rental_date) - f.rental_duration::numeric)
+            ELSE 0::numeric
+        END AS overdue_days,
+        CASE
+            WHEN r.return_date > (r.rental_date + '1 day'::interval) THEN GREATEST(0::numeric, EXTRACT(day FROM r.return_date - r.rental_date) - f.rental_duration::numeric)
+            ELSE 0::numeric
+        END * 1.00 AS late_charge
+   FROM rental r
+     LEFT JOIN payment p ON r.rental_id = p.rental_id
+     LEFT JOIN customer c ON p.customer_id = c.customer_id
+     LEFT JOIN address a ON c.address_id = a.address_id
+     LEFT JOIN city b ON a.city_id = b.city_id
+     LEFT JOIN country d ON b.country_id = d.country_id
+     LEFT JOIN inventory i ON r.inventory_id = i.inventory_id
+     LEFT JOIN film f ON i.film_id = f.film_id
+     JOIN film_category fc ON f.film_id = fc.film_id
+     LEFT JOIN category g ON fc.category_id = g.category_id;
