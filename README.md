@@ -1,13 +1,23 @@
 # Rockbuster Stealth LLC - SQL Queries
-**Project Overview**: Analyzing **Rockbuster Stealth LLC**'s 2005-2006 movie rental data to generate actionable insights and guide the launch strategy for their new online streaming platform. 
+📌 Project Overview
+Analyzing Rockbuster Stealth LLC’s 2005-2006 rental data to uncover trends, optimize customer targeting, and guide the launch of their new streaming platform.
 
-## Main Recommendations: 
-1) Focus on normalized averages for customer behavior to mitigate the risk of overestimating markets influenced by outliers (important for Rockbuster in particular, with their highly dispersed and unevenly distributed customer base); this provides a more reliable foundation for predicting growth opportunities.
-2) Normalizing rentals against the inventory for each genre shows that the top 5 genres with greatest growth potential are: 1) Sci-Fi; 2) Action; 3) Animation; 4) Classics; 5) Drama. For outlier countries, however (i.e. significantly higher or lower rentals per customer), a more localized exploration of genre popularity is advisable.
-3) Rental frequency and spending show a clear decline, from New Customers to Long-Tenured Customers-- strategies such as subscription models or loyalty programs will help enure long-term revenue stability and growth.
-4) **Above all**, over 25% of Rockbuster's revenue came from **late fees**--a fragile source of income as customer behavior shifts and competition from streaming services increases. Experimenting with **tiered subscription plans** would be a good first step to designing a business model that does not rely on transactional penalties.  
+Key Insights & Recommendations:
+✅ Normalize Customer Behavior Metrics
+To avoid overestimating market potential, focus on normalized averages rather than raw totals—especially given Rockbuster’s highly dispersed and unevenly distributed customer base.
+
+✅ Top Growth Genres (Normalized by Inventory)
+Sci-Fi, Action, Animation, Classics, and Drama show the highest growth potential. However, in outlier countries (where rentals per customer are unusually high or low), a localized genre analysis is recommended.
+
+✅ Retention Strategies Needed
+Rental frequency and spending decline as customers move from “New” to “Long-Tenured.” Implementing subscription models or loyalty programs can stabilize long-term revenue.
+
+✅ Late Fees: A Risky Crutch
+Over 25% of revenue comes from late fees—a fragile source as streaming competition grows. Introducing tiered subscription plans would help transition to a sustainable revenue model.
 
 View full storyboard here: [Rockbuster Stealth Analysis](https://public.tableau.com/app/profile/amy.zhang8641/viz/Rockbusterdataanalysis_1/Story1)
+
+(This description edit brought to you by 🔥ChatGPT.)
 
 ## Index (Storyboard Slide # : SQL Query for the corresponding visualization)
 
