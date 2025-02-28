@@ -49,4 +49,4 @@ late_charge_noneg
 Slide 7: Rental Rate Mode Graph
 country_engagement_TABLE (same as 'Slide 3: Scatterplots'; **see above**)
 
-🔥 vers.ChatGPT.
+🔥 co-author: ChatGPT
