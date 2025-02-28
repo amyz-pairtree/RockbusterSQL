@@ -1,0 +1,99 @@
+-- ONE: 'customer_engagement_district'
+-- This table records customer behavior metrics, including location (city, district, country), total rentals, tenure length (calculated from earliest and most recent rentals), total amount paid, and average spending and rental frequency per week and month during their tenure.  
+
+ SELECT c.customer_id,
+    c.first_name,
+    c.last_name,
+    b.city,
+    a.district,
+    d.country,
+    count(r.rental_id) AS number_of_rentals,
+    min(r.rental_date) AS earliest_rental_date,
+    max(r.rental_date) AS most_recent_rental_date,
+    date_part('day'::text, max(r.rental_date) - min(r.rental_date)) AS active_days,
+    COALESCE(sum(p.amount), 0::numeric) AS total_amount_paid,
+/* Could have just used the Alias ‘active_days’ instead of redoing the calculation each time.*/
+        CASE
+            WHEN date_part('day'::text, max(r.rental_date) - min(r.rental_date)) >= 7::double precision THEN COALESCE(sum(p.amount), 0::numeric)::double precision / (date_part('day'::text, max(r.rental_date) - min(r.rental_date)) / 7::double precision)
+            ELSE 0::double precision
+        END AS avg_spending_per_week,
+        CASE
+            WHEN date_part('day'::text, max(r.rental_date) - min(r.rental_date)) >= 30::double precision THEN COALESCE(sum(p.amount), 0::numeric)::double precision / (date_part('day'::text, max(r.rental_date) - min(r.rental_date)) / 30.44::double precision)
+            ELSE 0::double precision
+        END AS avg_spending_per_month,
+        CASE
+            WHEN date_part('day'::text, max(r.rental_date) - min(r.rental_date)) >= 7::double precision THEN count(r.rental_id)::double precision / (date_part('day'::text, max(r.rental_date) - min(r.rental_date)) / 7::double precision)
+            ELSE 0::double precision
+        END AS rental_frequency_per_week,
+        CASE
+            WHEN date_part('day'::text, max(r.rental_date) - min(r.rental_date)) >= 30::double precision THEN count(r.rental_id)::double precision / (date_part('day'::text, max(r.rental_date) - min(r.rental_date)) / 30.44::double precision)
+            ELSE 0::double precision
+        END AS rental_frequency_per_month
+   FROM rental r
+     LEFT JOIN customer c ON r.customer_id = c.customer_id
+     LEFT JOIN address a ON c.address_id = a.address_id
+     LEFT JOIN city b ON a.city_id = b.city_id
+     LEFT JOIN country d ON b.country_id = d.country_id
+     LEFT JOIN payment p ON r.rental_id = p.rental_id
+  GROUP BY c.customer_id, c.first_name, c.last_name, b.city, a.district, d.country
+  ORDER BY (count(r.rental_id)) DESC;
+
+-- TWO: (post-facto) Correction
+--Some improvements that could be considered:
+1. Reducing Repetition in CASE Statements
+There are several CASE statements that calculate averages for weekly and monthly spending, frequency, etc. These formulas are repeated with very minor differences (for weekly vs monthly metrics). To avoid redundancy and improve maintainability, you could calculate the number of days in a separate expression and reuse it for all these metrics.
+
+2. Use Subquery or CTE to Calculate Date Differences
+Instead of repeatedly calculating the date difference between max(r.rental_date) - min(r.rental_date) for each CASE statement, you could perform this calculation once in a subquery or CTE, which would improve clarity and possibly performance.
+
+3. Remove ::double precision Casts
+If the data types you're working with (e.g., numeric, integer, date) already match the needed precision, you could omit the explicit casting (e.g., ::double precision), unless it's absolutely necessary for certain operations.
+
+4. Using COALESCE More Effectively
+Instead of COALESCE(sum(p.amount), 0::numeric) in multiple places, you could handle the NULL values once at the outer level, which reduces redundant calls to COALESCE.
+
+SELECT 
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    b.city,
+    a.district,
+    d.country,
+    count(r.rental_id) AS number_of_rentals,
+    min(r.rental_date) AS earliest_rental_date,
+    max(r.rental_date) AS most_recent_rental_date,
+    date_part('day', max(r.rental_date) - min(r.rental_date)) AS active_days,
+    COALESCE(sum(p.amount), 0) AS total_amount_paid,
+    -- Calculate active days once
+    CASE
+        WHEN active_days >= 7 THEN COALESCE(sum(p.amount), 0) / (active_days / 7)
+        ELSE 0
+    END AS avg_spending_per_week,
+
+    CASE
+        WHEN active_days >= 30 THEN COALESCE(sum(p.amount), 0) / (active_days / 30.44)
+        ELSE 0
+    END AS avg_spending_per_month,
+
+    CASE
+        WHEN active_days >= 7 THEN count(r.rental_id) / (active_days / 7)
+        ELSE 0
+    END AS rental_frequency_per_week,
+
+    CASE
+        WHEN active_days >= 30 THEN count(r.rental_id) / (active_days / 30.44)
+        ELSE 0
+    END AS rental_frequency_per_month
+FROM 
+    rental r
+    LEFT JOIN customer c ON r.customer_id = c.customer_id
+    LEFT JOIN address a ON c.address_id = a.address_id
+    LEFT JOIN city b ON a.city_id = b.city_id
+    LEFT JOIN country d ON b.country_id = d.country_id
+    LEFT JOIN payment p ON r.rental_id = p.rental_id
+GROUP BY 
+    c.customer_id, c.first_name, c.last_name, b.city, a.district, d.country
+ORDER BY 
+    number_of_rentals DESC;
+
+
