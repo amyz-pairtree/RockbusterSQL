@@ -1,0 +1,303 @@
+-- ONE: 'country_engagement_TABLE' 
+-- * A combination of two views: country_analysis and country_engagement_analysis;
+This table aggregates performance and customer behavior by country, including the number of customers, total rentals, total revenue, and key metrics such as average revenue per customer, average revenue per rental, average monthly spending (normalized by the average tenure of customers in the country), average rentals per month (also normalized), the most popular rental rate, and average customer tenure length.
+
+ SELECT e.country,
+    e.number_of_customers,
+    c.total_rentals,
+    c.total_revenue,
+    c.avg_revenue_per_customer,
+    e.avg_revenue_per_rental,
+    e.avg_spending_per_month_per_customer,
+    e.avg_rentals_per_month_per_customer,
+    e.mode_rental_rate,
+    e.avg_active_days_per_country
+   FROM country_engagement_analysis e
+     LEFT JOIN country_analysis c ON e.country::text = c.country::text;
+
+-- ONE_a: 'country_analysis' 
+-- *The earlier version of the table included an 'avg_rentals_per_month' column that did not normalize rental frequency properly. It calculated rental frequency based on a country-level tenure length—defined as the difference in days between the most recent and earliest rental in a country—which inaccurately assumes that a country itself can have a tenure. A subsequent version of the table corrected this by including a column for the average tenure length of customers in each country, which was then used to calculate a more accurate 'avg_rental_frequency_per_month_per_customer.' However, this updated table (country_engagement_analysis) unintentionally over-aggregated total rentals, total revenue, throwing off the calculation for avg_revenue_per_customer,  necessitating a join with the earlier version to preserve accurate aggregated metrics.
+
+/* First CTE */ 
+WITH rental_data AS (
+         SELECT d_1.country,
+            f_1.rental_rate
+           FROM rental r_1
+             LEFT JOIN inventory i_1 ON r_1.inventory_id = i_1.inventory_id
+             LEFT JOIN film f_1 ON i_1.film_id = f_1.film_id
+             LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+             LEFT JOIN address a_1 ON c_1.address_id = a_1.address_id
+             LEFT JOIN city b_1 ON a_1.city_id = b_1.city_id
+             LEFT JOIN country d_1 ON b_1.country_id = d_1.country_id
+        ), 
+/*Second CTE (within WITH clause)*/
+customer_spending_per_month AS (
+         SELECT c_1.customer_id,
+            D_1.country,
+/*Calculate Total Spending per customer: COALESCE ensures that Nulls are treated as 0*/
+            COALESCE(sum(p_1.amount), 0::numeric)::double precision / 
+/*Calculate Rental Duration in Months*/
+(date_part('day'::text, max(r_1.rental_date) - min(r_1.rental_date)) / 30.44::double precision) AS spending_per_month
+           FROM rental r_1
+             LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+             LEFT JOIN address a_1 ON c_1.address_id = a_1.address_id
+             LEFT JOIN city b_1 ON a_1.city_id = b_1.city_id
+             LEFT JOIN country d_1 ON b_1.country_id = d_1.country_id
+             LEFT JOIN payment p_1 ON r_1.rental_id = p_1.rental_id
+          GROUP BY c_1.customer_id, d_1.country
+        )
+/*MAIN QUERY*/
+ SELECT d.country,
+    count(DISTINCT c.customer_id) AS number_of_customers,
+    count(r.rental_id) AS total_rentals,
+    COALESCE(sum(p.amount), 0::numeric) AS total_revenue,
+    COALESCE(sum(p.amount), 0::numeric) / count(DISTINCT c.customer_id)::numeric AS avg_revenue_per_customer,
+	/*These two CASE statements are calculating different metrics for the rentals and their associated revenue; conditional logic statement, based on whether rentals have been made.*/
+        CASE
+          WHEN count(r.rental_id) > 0 THEN COALESCE(sum(p.amount), 0::numeric) / count(r.rental_id)::numeric
+            ELSE 0::numeric
+        END AS avg_revenue_per_rental,
+        CASE
+            WHEN count(r.rental_id) > 0 THEN count(r.rental_id)::double precision / (date_part('day'::text, max(r.rental_date) - min(r.rental_date)) / 30.44::double precision)
+            ELSE 0::double precision
+        END AS avg_rentals_per_month,
+
+/*Refers to CTE “customer_spending_per_month”*/
+ COALESCE(avg(csm.spending_per_month), 0::double precision) AS avg_spending_per_month_per_customer,
+/*This is a scalar subquery that is used to determine the mode (the most frequent value) of the rental_rate for each country; refers to CTE “rental_data”*/
+    ( SELECT rd.rental_rate
+           FROM rental_data rd
+          WHERE rd.country::text = d.country::text
+          GROUP BY rd.rental_rate
+          ORDER BY (count(*)) DESC, rd.rental_rate
+         LIMIT 1) AS mode_rental_rate
+
+   FROM rental r
+     LEFT JOIN customer c ON r.customer_id = c.customer_id
+     LEFT JOIN address a ON c.address_id = a.address_id
+     LEFT JOIN city b ON a.city_id = b.city_id
+     LEFT JOIN country d ON b.country_id = d.country_id
+     LEFT JOIN payment p ON r.rental_id = p.rental_id
+     LEFT JOIN inventory i ON r.inventory_id = i.inventory_id
+     LEFT JOIN film f ON i.film_id = f.film_id
+     LEFT JOIN customer_spending_per_month csm ON csm.customer_id = c.customer_id
+  GROUP BY d.country
+  ORDER BY (count(DISTINCT c.customer_id)) DESC;
+
+--ONE_b: 'country_engagement_analysis'
+ WITH rental_data AS (
+         SELECT d_1.country,
+            f_1.rental_rate
+           FROM rental r_1
+             LEFT JOIN inventory i_1 ON r_1.inventory_id = i_1.inventory_id
+             LEFT JOIN film f_1 ON i_1.film_id = f_1.film_id
+             LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+             LEFT JOIN address a_1 ON c_1.address_id = a_1.address_id
+             LEFT JOIN city b_1 ON a_1.city_id = b_1.city_id
+             LEFT JOIN country d_1 ON b_1.country_id = d_1.country_id
+        ), customer_spending_per_month AS (
+         SELECT c_1.customer_id,
+            d_1.country,
+            COALESCE(sum(p_1.amount), 0::numeric)::double precision / (date_part('day'::text, max(r_1.rental_date) - min(r_1.rental_date)) / 30.44::double precision) AS spending_per_month
+           FROM rental r_1
+             LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+             LEFT JOIN address a_1 ON c_1.address_id = a_1.address_id
+             LEFT JOIN city b_1 ON a_1.city_id = b_1.city_id
+             LEFT JOIN country d_1 ON b_1.country_id = d_1.country_id
+             LEFT JOIN payment p_1 ON r_1.rental_id = p_1.rental_id
+          GROUP BY c_1.customer_id, d_1.country
+        ), customer_active_days AS (
+         SELECT c_1.customer_id,
+            date_part('day'::text, max(r_1.rental_date) - min(r_1.rental_date)) AS active_days
+           FROM rental r_1
+             LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+          GROUP BY c_1.customer_id
+        ), customer_rentals_per_customer AS (
+         SELECT c_1.customer_id,
+            count(r_1.rental_id) AS rentals_per_customer
+           FROM rental r_1
+             LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+          GROUP BY c_1.customer_id
+        ), customer_active_days_per_country AS (
+         SELECT c_1.customer_id,
+            d_1.country,
+            date_part('day'::text, max(r_1.rental_date) - min(r_1.rental_date)) AS active_days
+           FROM rental r_1
+             LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+             LEFT JOIN address a_1 ON c_1.address_id = a_1.address_id
+             LEFT JOIN city b_1 ON a_1.city_id = b_1.city_id
+             LEFT JOIN country d_1 ON b_1.country_id = d_1.country_id
+          GROUP BY c_1.customer_id, d_1.country
+        )
+ SELECT d.country,
+    count(DISTINCT c.customer_id) AS number_of_customers,
+    count(r.rental_id) AS total_rentals,
+    COALESCE(sum(p.amount), 0::numeric) AS total_revenue,
+    COALESCE(sum(p.amount), 0::numeric) / count(DISTINCT c.customer_id)::numeric AS avg_revenue_per_customer,
+        CASE
+            WHEN count(r.rental_id) > 0 THEN COALESCE(sum(p.amount), 0::numeric) / count(r.rental_id)::numeric
+            ELSE 0::numeric
+        END AS avg_revenue_per_rental,
+    COALESCE(avg(csm.spending_per_month), 0::double precision) AS avg_spending_per_month_per_customer,
+    COALESCE(avg(
+        CASE
+            WHEN cad.active_days > 0::double precision THEN crp.rentals_per_customer::double precision / (cad.active_days / 30.44::double precision)
+            ELSE 0::double precision
+        END), 0::double precision) AS avg_rentals_per_month_per_customer,
+    ( SELECT rd.rental_rate
+           FROM rental_data rd
+          WHERE rd.country::text = d.country::text
+GROUP BY rd.rental_rate
+          ORDER BY (count(*)) DESC, rd.rental_rate
+         LIMIT 1) AS mode_rental_rate,
+    COALESCE(avg(cad.active_days), 0::double precision) AS avg_active_days_per_country
+   FROM rental r
+     LEFT JOIN customer c ON r.customer_id = c.customer_id
+     LEFT JOIN address a ON c.address_id = a.address_id
+     LEFT JOIN city b ON a.city_id = b.city_id
+     LEFT JOIN country d ON b.country_id = d.country_id
+     LEFT JOIN payment p ON r.rental_id = p.rental_id
+     LEFT JOIN inventory i ON r.inventory_id = i.inventory_id
+     LEFT JOIN film f ON i.film_id = f.film_id
+     LEFT JOIN customer_spending_per_month csm ON csm.customer_id = c.customer_id
+     LEFT JOIN customer_active_days cad ON cad.customer_id = c.customer_id
+     LEFT JOIN customer_rentals_per_customer crp ON crp.customer_id = c.customer_id
+     LEFT JOIN customer_active_days_per_country cadc ON cadc.country::text = d.country::text
+  GROUP BY d.country
+  ORDER BY (count(DISTINCT c.customer_id)) DESC;
+
+*NOTE: inflated values (total_rentals, total_revenue, avg. revenue per customer)
+
+-- TWO: (post-facto) Correction - would not have needed hybrid ‘country_engagement_TABLE’
+
+/*This CTE gathers country and rental_rate from several joined tables (rental, inventory, film, customer, address, city, and country). We use this to pull rental rate data and relate it to countries, so we can calculate the most common rental rate per country later.*/
+WITH rental_data AS (
+    SELECT d_1.country,
+           f_1.rental_rate
+      FROM rental r_1
+      LEFT JOIN inventory i_1 ON r_1.inventory_id = i_1.inventory_id
+      LEFT JOIN film f_1 ON i_1.film_id = f_1.film_id
+      LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+      LEFT JOIN address a_1 ON c_1.address_id = a_1.address_id
+      LEFT JOIN city b_1 ON a_1.city_id = b_1.city_id
+      LEFT JOIN country d_1 ON b_1.country_id = d_1.country_id
+),
+/*This CTE calculates the spending per month for each customer, considering the total amount spent (SUM(p_1.amount)) divided by the number of months (tenure-length normalized). It allows us to calculate average spending per month for each customer across different countries.*/
+customer_spending_per_month AS (
+    SELECT c_1.customer_id,
+           d_1.country,
+           COALESCE(SUM(p_1.amount), 0::numeric) / 
+           (DATE_PART('day', MAX(r_1.rental_date) - MIN(r_1.rental_date)) / 30.44) AS spending_per_month
+      FROM rental r_1
+      LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+      LEFT JOIN address a_1 ON c_1.address_id = a_1.address_id
+      LEFT JOIN city b_1 ON a_1.city_id = b_1.city_id
+      LEFT JOIN country d_1 ON b_1.country_id = d_1.country_id
+      LEFT JOIN payment p_1 ON r_1.rental_id = p_1.rental_id
+   GROUP BY c_1.customer_id, d_1.country
+),
+/*This CTE calculates the total tenure length in days for each customer. The number of days can be used to measure customer activity over time. This is later used to adjust rental behavior by time.*/
+customer_active_days AS (
+    SELECT c_1.customer_id,
+           DATE_PART('day', MAX(r_1.rental_date) - MIN(r_1.rental_date)) AS active_days
+      FROM rental r_1
+      LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+   GROUP BY c_1.customer_id
+),
+/*This CTE calculates the total number of rentals for each customer by counting the rental IDs. It's useful for measuring customer behavior in terms of rental volume.*/
+customer_rentals_per_customer AS (
+    SELECT c_1.customer_id,
+           COUNT(r_1.rental_id) AS rentals_per_customer
+      FROM rental r_1
+      LEFT JOIN customer c_1 ON r_1.customer_id = c_1.customer_id
+   GROUP BY c_1.customer_id
+)
+
+/*MAIN QUERY*/ 
+
+SELECT d.country,
+       COUNT(DISTINCT c.customer_id) AS number_of_customers,
+       COUNT(r.rental_id) AS total_rentals,
+       COALESCE(SUM(p.amount), 0::numeric) AS total_revenue,
+       COALESCE(SUM(p.amount), 0::numeric) / NULLIF(COUNT(DISTINCT c.customer_id), 0) AS avg_revenue_per_customer,
+       CASE 
+           WHEN COUNT(r.rental_id) > 0 THEN COALESCE(SUM(p.amount), 0::numeric) / COUNT(r.rental_id)
+           ELSE 0::numeric
+       END AS avg_revenue_per_rental,
+       COALESCE(AVG(csm.spending_per_month), 0::double precision) AS avg_spending_per_month_per_customer,
+       COALESCE(AVG(
+           CASE
+               WHEN cad.active_days > 0 THEN crp.rentals_per_customer / (cad.active_days / 30.44)
+               ELSE 0
+           END), 0) AS avg_rentals_per_month_per_customer,
+
+/*subquery for mode rental rate*/
+       (SELECT rd.rental_rate
+          FROM rental_data rd
+         WHERE rd.country = d.country
+         GROUP BY rd.rental_rate
+         ORDER BY COUNT(*) DESC, rd.rental_rate
+         LIMIT 1) AS mode_rental_rate,
+
+       COALESCE(AVG(cad.active_days), 0::double precision) AS avg_active_days_per_country
+
+  FROM rental r
+  LEFT JOIN customer c ON r.customer_id = c.customer_id
+  LEFT JOIN address a ON c.address_id = a.address_id
+  LEFT JOIN city b ON a.city_id = b.city_id
+  LEFT JOIN country d ON b.country_id = d.country_id
+  LEFT JOIN payment p ON r.rental_id = p.rental_id
+  LEFT JOIN customer_spending_per_month csm ON csm.customer_id = c.customer_id
+  LEFT JOIN customer_active_days cad ON cad.customer_id = c.customer_id
+  LEFT JOIN customer_rentals_per_customer crp ON crp.customer_id = c.customer_id
+GROUP BY d.country
+ORDER BY COUNT(DISTINCT c.customer_id) DESC;
+
+-- While both queries use CTEs, the key differences lie in:
+Function Name Casing: The corrected query uses standard uppercase for SQL functions (SUM, COUNT, AVG) while the original query uses lowercase.
+Handling of Division by Zero: The corrected query ensures no division by zero errors occur, using NULLIF.
+Simplification of Expressions: The corrected query removes unnecessary type casts (e.g., ::double precision), simplifying calculations and improving readability.
+Formatting: Overall, the corrected query adheres to cleaner SQL formatting, improving consistency and preventing potential errors.
+
+-- THREE: 'stddev_absolutes'
+This table records statistical descriptions of key metrics aggregated by country, including the standard deviation and its absolute value (for visualization purposes). Metrics include average revenue per customer, average revenue per rental, average monthly spending (normalized by average tenure), and average rentals per month (normalized).
+
+ WITH country_rentals AS (
+         SELECT country_engagement_table.country,
+            country_engagement_table.avg_rentals_per_month_per_customer,
+            country_engagement_table.avg_spending_per_month_per_customer,
+            country_engagement_table.avg_revenue_per_rental,
+            country_engagement_table.avg_revenue_per_customer
+           FROM country_engagement_table
+          GROUP BY country_engagement_table.country, country_engagement_table.avg_rentals_per_month_per_customer, country_engagement_table.avg_spending_per_month_per_customer, country_engagement_table.avg_revenue_per_rental, country_engagement_table.avg_revenue_per_customer
+        ), 
+stats AS (
+         SELECT avg(country_engagement_table.avg_rentals_per_month_per_customer) AS mean_rentals,
+            stddev(country_engagement_table.avg_rentals_per_month_per_customer) AS stddev_rentals,
+            avg(country_engagement_table.avg_spending_per_month_per_customer) AS mean_spending,
+            stddev(country_engagement_table.avg_spending_per_month_per_customer) AS stddev_spending,
+            avg(country_engagement_table.avg_revenue_per_rental) AS mean_revenue_per_rental,
+            stddev(country_engagement_table.avg_revenue_per_rental) AS stddev_revenue_per_rental,
+            avg(country_engagement_table.avg_revenue_per_customer) AS mean_revenue_per_customer,
+            stddev(country_engagement_table.avg_revenue_per_customer) AS stddev_revenue_per_customer
+           FROM country_engagement_table
+        )
+ SELECT cr.country, /*These calculations possible by using Cartesian Join at end of script, to join the two CTEs*?
+    cr.avg_rentals_per_month_per_customer,
+    cr.avg_spending_per_month_per_customer,
+    cr.avg_revenue_per_rental,
+    cr.avg_revenue_per_customer,
+    (cr.avg_rentals_per_month_per_customer - s.mean_rentals) / s.stddev_rentals AS rentals_standard_deviation,
+    abs((cr.avg_rentals_per_month_per_customer - s.mean_rentals) / s.stddev_rentals) AS rentals_absolute_stddev,
+    (cr.avg_spending_per_month_per_customer - s.mean_spending) / s.stddev_spending AS spending_standard_deviation,
+    abs((cr.avg_spending_per_month_per_customer - s.mean_spending) / s.stddev_spending) AS spending_absolute_stddev,
+    (cr.avg_revenue_per_rental - s.mean_revenue_per_rental) / s.stddev_revenue_per_rental AS revenue_per_rental_standard_deviation,
+    abs((cr.avg_revenue_per_rental - s.mean_revenue_per_rental) / s.stddev_revenue_per_rental) AS revenue_per_rental_absolute_stddev,
+    (cr.avg_revenue_per_customer - s.mean_revenue_per_customer) / s.stddev_revenue_per_customer AS revenue_per_customer_standard_deviation,
+    abs((cr.avg_revenue_per_customer - s.mean_revenue_per_customer) / s.stddev_revenue_per_customer) AS revenue_per_customer_absolute_stddev
+   FROM country_rentals cr
+     JOIN stats s ON 1 = 1;
+
+
+
+
