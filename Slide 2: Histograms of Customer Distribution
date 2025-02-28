@@ -1,0 +1,101 @@
+--'district_histogram'
+--This table records the count of districts, grouped by the number of customers in each district, ranging from 1 to 10 customers. 
+The subquery isolates the logic of grouping by district and calculating customer populations. The outer query then analyzes these results (grouping them by population size and counting districts). (Subquery runs first.)
+
+ SELECT subquery.customer_population_size,
+    count(DISTINCT subquery.district) AS number_of_districts
+   FROM ( SELECT granular_rental_table_2.district,
+            count(DISTINCT granular_rental_table_2.customer_id) AS customer_population_size
+           FROM granular_rental_table_2
+          GROUP BY granular_rental_table_2.district) subquery
+  GROUP BY subquery.customer_population_size
+ HAVING subquery.customer_population_size > 0
+  ORDER BY subquery.customer_population_size;
+
+--'country_histogram'
+--This table records the count of countries, grouped by the number of customers in each country, organized into intervals of 10 (e.g., 1-10, 11-20, up to 51-60). 
+
+/* Main Select Query: CASE statement creates population size bins. At the end, it counts the distinct number of countries sorted into each bin.*/ 
+SELECT
+        CASE
+            WHEN subquery.customer_population_size >= 1 AND subquery.customer_population_size <= 10 THEN '1-10'::text
+            WHEN subquery.customer_population_size >= 11 AND subquery.customer_population_size <= 20 THEN '11-20'::text
+            WHEN subquery.customer_population_size >= 21 AND subquery.customer_population_size <= 30 THEN '21-30'::text
+            WHEN subquery.customer_population_size >= 31 AND subquery.customer_population_size <= 40 THEN '31-40'::text
+            WHEN subquery.customer_population_size >= 41 AND subquery.customer_population_size <= 50 THEN '41-50'::text
+            WHEN subquery.customer_population_size >= 51 AND subquery.customer_population_size <= 60 THEN '51-60'::text
+            ELSE NULL::text
+        END AS population_bin,
+    count(DISTINCT subquery.country) AS number_of_countries
+
+/*SUBQUERY: The subquery is nested within the main query. It gathers the necessary data from the granular_rental_table_2, where each row contains a rental transaction with customer and country information. The subquery does two main things: 1) It groups by country. 2) It counts the distinct number of customers (represented as customer_id) for each country.)
+
+   FROM ( SELECT granular_rental_table_2.country,
+            count(DISTINCT granular_rental_table_2.customer_id) AS customer_population_size
+           FROM granular_rental_table_2
+          GROUP BY granular_rental_table_2.country - - Groups by country. 
+         HAVING count(DISTINCT granular_rental_table_2.customer_id) > 0) subquery 
+- - Counts up the distinct number of customers. 
+
+/*GROUPING - part of main query*/
+  GROUP BY (
+        CASE
+            WHEN subquery.customer_population_size >= 1 AND subquery.customer_population_size <= 10 THEN '1-10'::text
+            WHEN subquery.customer_population_size >= 11 AND subquery.customer_population_size <= 20 THEN '11-20'::text
+            WHEN subquery.customer_population_size >= 21 AND subquery.customer_population_size <= 30 THEN '21-30'::text
+            WHEN subquery.customer_population_size >= 31 AND subquery.customer_population_size <= 40 THEN '31-40'::text
+            WHEN subquery.customer_population_size >= 41 AND subquery.customer_population_size <= 50 THEN '41-50'::text
+            WHEN subquery.customer_population_size >= 51 AND subquery.customer_population_size <= 60 THEN '51-60'::text
+            ELSE NULL::text
+        END)
+
+/*ORDERING - part of main query*/
+  ORDER BY (
+        CASE
+            WHEN subquery.customer_population_size >= 1 AND subquery.customer_population_size <= 10 THEN '1-10'::text
+            WHEN subquery.customer_population_size >= 11 AND subquery.customer_population_size <= 20 THEN '11-20'::text
+            WHEN subquery.customer_population_size >= 21 AND subquery.customer_population_size <= 30 THEN '21-30'::text
+            WHEN subquery.customer_population_size >= 31 AND subquery.customer_population_size <= 40 THEN '31-40'::text
+            WHEN subquery.customer_population_size >= 41 AND subquery.customer_population_size <= 50 THEN '41-50'::text
+            WHEN subquery.customer_population_size >= 51 AND subquery.customer_population_size <= 60 THEN '51-60'::text
+            ELSE NULL::text
+        END);
+
+--(post-facto) Correction  
+CTE version - would have removed inefficiency of repeating the CASE statement in multiple places. 
+/* Subquery/CTE: Generate customer population size for each country */
+WITH customer_population AS (
+    SELECT 
+        country,
+        COUNT(DISTINCT customer_id) AS customer_population_size
+    FROM granular_rental_table_2
+    GROUP BY country
+    HAVING COUNT(DISTINCT customer_id) > 0
+),
+/* CTE: Create bins for customer population size */
+binned_data AS (
+    SELECT 
+        country,
+        CASE
+            WHEN customer_population_size BETWEEN 1 AND 10 THEN '1-10'
+            WHEN customer_population_size BETWEEN 11 AND 20 THEN '11-20'
+            WHEN customer_population_size BETWEEN 21 AND 30 THEN '21-30'
+            WHEN customer_population_size BETWEEN 31 AND 40 THEN '31-40'
+            WHEN customer_population_size BETWEEN 41 AND 50 THEN '41-50'
+            WHEN customer_population_size BETWEEN 51 AND 60 THEN '51-60'
+            ELSE NULL
+        END AS population_bin
+    FROM customer_population
+)
+/* Main Query: Count distinct countries in each bin */
+SELECT 
+    population_bin,
+    COUNT(DISTINCT country) AS number_of_countries
+FROM binned_data
+GROUP BY population_bin
+ORDER BY population_bin;
+
+
+
+
+
