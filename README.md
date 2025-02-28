@@ -3,6 +3,7 @@
 Analyzing Rockbuster Stealth LLC’s 2005-2006 rental data to uncover trends, optimize customer targeting, and guide the launch of their new streaming platform.
 
 Key Insights & Recommendations:
+
 ✅ Normalize Customer Behavior Metrics
 To avoid overestimating market potential, focus on normalized averages rather than raw totals—especially given Rockbuster’s highly dispersed and unevenly distributed customer base.
 
@@ -15,9 +16,9 @@ Rental frequency and spending decline as customers move from “New” to “Lon
 ✅ Late Fees: A Risky Crutch
 Over 25% of revenue comes from late fees—a fragile source as streaming competition grows. Introducing tiered subscription plans would help transition to a sustainable revenue model.
 
-View full storyboard here: [Rockbuster Stealth Analysis](https://public.tableau.com/app/profile/amy.zhang8641/viz/Rockbusterdataanalysis_1/Story1)
+🔗 View full storyboard here: [Rockbuster Stealth Analysis](https://public.tableau.com/app/profile/amy.zhang8641/viz/Rockbusterdataanalysis_1/Story1)
 
-(This description edit brought to you by 🔥ChatGPT.)
+👀 (This description edit brought to you by 🔥ChatGPT.)
 
 ## Index (Storyboard Slide # : SQL Query for the corresponding visualization)
 
