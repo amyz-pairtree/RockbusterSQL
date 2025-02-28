@@ -1,4 +1,4 @@
---ONE:'district_histogram'
+--'district_histogram'
 --This table records the count of districts, grouped by the number of customers in each district, ranging from 1 to 10 customers. 
 The subquery isolates the logic of grouping by district and calculating customer populations. The outer query then analyzes these results (grouping them by population size and counting districts). (Subquery runs first.)
 
@@ -12,7 +12,7 @@ The subquery isolates the logic of grouping by district and calculating customer
  HAVING subquery.customer_population_size > 0
   ORDER BY subquery.customer_population_size;
 
---TWO: 'country_histogram'
+--'country_histogram'
 --This table records the count of countries, grouped by the number of customers in each country, organized into intervals of 10 (e.g., 1-10, 11-20, up to 51-60). 
 
 /* Main Select Query: CASE statement creates population size bins. At the end, it counts the distinct number of countries sorted into each bin.*/ 
@@ -61,7 +61,7 @@ SELECT
             ELSE NULL::text
         END);
 
---THREE: (post-facto) Correction  
+--(post-facto) Correction  
 CTE version - would have removed inefficiency of repeating the CASE statement in multiple places. 
 /* Subquery/CTE: Generate customer population size for each country */
 WITH customer_population AS (
