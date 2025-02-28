@@ -1,8 +1,8 @@
 # Rockbuster Stealth LLC - SQL Queries
-📌 Project Overview
+📌 **Project Overview**
 Analyzing Rockbuster Stealth LLC’s 2005-2006 rental data to uncover trends, optimize customer targeting, and guide the launch of their new streaming platform.
 
-Key Insights & Recommendations:
+**Key Insights & Recommendations**:
 
 ✅ Normalize Customer Behavior Metrics
 To avoid overestimating market potential, focus on normalized averages rather than raw totals—especially given Rockbuster’s highly dispersed and unevenly distributed customer base.
